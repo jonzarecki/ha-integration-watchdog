@@ -1,0 +1,166 @@
+blueprint:
+  name: Integration Watchdog (auto)
+  description: Auto-reload failing integrations detected by Watchman using Spook
+  domain: automation
+  input:
+    issue_sensor:
+      name: Watchman issue sensor
+      description: Sensor that tracks entity issues (requires Watchman integration)
+      default: sensor.watchman_issue_count
+      selector:
+        entity:
+          domain: sensor
+    notify_service:
+      name: Notify service
+      description: Notification service to send status updates
+      default: notify.mobile_app_your_phone
+      selector:
+        text:
+    max_reload_attempts:
+      name: Reload attempts before reboot
+      description: Number of reload attempts before restarting Home Assistant
+      default: 3
+      selector:
+        number:
+          min: 1
+          max: 10
+          mode: box
+
+trigger:
+  # Trigger on entity issues (main function)
+  - platform: numeric_state
+    entity_id: !input issue_sensor
+    above: 0
+    for: "00:05:00"
+  # Trigger periodically to check setup state  
+  - platform: time_pattern
+    minutes: "/30"
+
+variables:
+  issue_sensor: !input issue_sensor
+  issues: "{{ state_attr(issue_sensor,'issues') or [] }}"
+  entry_ids: >
+    {{ issues
+       | map(attribute='entity_id')
+       | map('config_entry_id')
+       | reject('none')
+       | unique
+       | list }}
+  attempts: "{{ this.attributes.get('attempts', 0) | int }}"
+  max_reload_attempts: !input max_reload_attempts
+
+action:
+  # Smart setup wizard - guide user through missing dependencies
+  - choose:
+      # Setup Mode: Missing Watchman
+      - conditions:
+          - condition: template
+            value_template: "{{ states(issue_sensor) == 'unavailable' }}"
+        sequence:
+          - service: persistent_notification.create
+            data:
+              notification_id: "integration_watchdog_setup"
+              title: "🔧 Integration Watchdog Setup (Step 1/2)"
+              message: |
+                Welcome! Let's get you set up.
+                
+                **STEP 1: Install Watchman**
+                1. Go to HACS → Integrations  
+                2. Search "Watchman" → Install
+                3. Restart Home Assistant
+                4. Settings → Add Integration → "Watchman"
+                
+                I'll check again when you restart Home Assistant.
+          - stop: "Waiting for Watchman installation"
+      
+      # Setup Mode: Missing Spook  
+      - conditions:
+          - condition: template
+            value_template: "{{ not has_service('homeassistant', 'reload_config_entry') }}"
+        sequence:
+          - service: persistent_notification.create
+            data:
+              notification_id: "integration_watchdog_setup"
+              title: "🔧 Integration Watchdog Setup (Step 2/2)"
+              message: |
+                Great! Watchman is installed. Now for the final step:
+                
+                **STEP 2: Install Spook**
+                1. Go to HACS → Integrations
+                2. Search "Spook" → Install  
+                3. Restart Home Assistant
+                4. Settings → Add Integration → "Spook"
+                
+                After this, you're all set! I'll check again when you restart Home Assistant.
+          - stop: "Waiting for Spook installation"
+      
+      # Setup Complete: Both dependencies found
+      - conditions:
+          - condition: template
+            value_template: "{{ states(issue_sensor) not in ['unavailable', 'unknown'] }}"
+          - condition: template
+            value_template: "{{ has_service('homeassistant', 'reload_config_entry') }}"
+          - condition: template
+            value_template: "{{ this.attributes.get('setup_complete', false) == false }}"
+        sequence:
+          - service: persistent_notification.create
+            data:
+              notification_id: "integration_watchdog_setup"
+              title: "🎉 Integration Watchdog Ready!"
+              message: |
+                **Perfect! Setup complete.** I'm now monitoring your integrations.
+                
+                ✅ Watchman: Installed & configured
+                ✅ Spook: Installed & configured
+                
+                I'll automatically reload failing integrations and notify you via phone. This notification will auto-dismiss in 30 seconds.
+          - delay: "00:00:30"
+          - service: persistent_notification.dismiss
+            data:
+              notification_id: "integration_watchdog_setup"
+          - service: automation.update
+            data:
+              entity_id: "{{ this.entity_id }}"
+              state_attributes:
+                setup_complete: true
+          - stop: "Setup wizard complete"
+      
+      # Normal Mode: No current issues
+      - conditions:
+          - condition: template
+            value_template: "{{ entry_ids|length == 0 }}"
+        sequence:
+          - stop: "No issues to process - system healthy"
+  
+  # Proceed with integration reloads
+  - repeat:
+      while: "{{ repeat.index <= entry_ids|length }}"
+      sequence:
+        - service: homeassistant.reload_config_entry
+          data:
+            entry_id: "{{ entry_ids[repeat.index-1] }}"
+  - service: !input notify_service
+    data:
+      title: "Watchdog reload"
+      message: "Reloaded {{ entry_ids|length }} integration(s): {{ entry_ids }}"
+  - choose:
+      - conditions: "{{ attempts + 1 >= (max_reload_attempts | int) }}"
+        sequence:
+          - service: !input notify_service
+            data:
+              title: "Watchdog rebooting Home Assistant"
+              message: "Still seeing issues after {{ max_reload_attempts }} reloads."
+          - service: automation.update
+            data:
+              entity_id: "{{ this.entity_id }}"
+              state_attributes:
+                attempts: 0
+          - service: homeassistant.restart
+      - default:
+          - service: automation.update
+            data:
+              entity_id: "{{ this.entity_id }}"
+              state_attributes:
+                attempts: "{{ attempts + 1 }}"
+
+mode: restart

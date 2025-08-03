@@ -1,0 +1,60 @@
+---
+globs: *.yaml,*.yml
+description: Blueprint YAML structure and technical requirements
+---
+
+# Blueprint Technical Requirements
+
+## Core Blueprint Structure
+When working with [integration_watchdog_auto.yaml](mdc:blueprints/automation/integration_watchdog_auto.yaml):
+
+### Required Blueprint Inputs
+```yaml
+blueprint:
+  name: Integration Watchdog (auto)
+  domain: automation
+  input:
+    issue_sensor:          # Watchman issue count sensor
+    notify_service:        # User's preferred notification method  
+    max_reload_attempts:   # Retry limit before HA restart
+```
+
+### Critical Technical Dependencies
+- **Watchman Integration**: Provides `sensor.watchman_issue_count` and `issues` attribute
+- **Spook Integration**: Exposes `homeassistant.reload_config_entry` service to automations
+- **Jinja Template Filters**: `config_entry_id()` filter for entity → integration mapping
+
+### Key Variables Logic
+```yaml
+variables:
+  issues: "{{ state_attr(trigger.entity_id,'issues') or [] }}"
+  entry_ids: >
+    {{ issues
+       | map(attribute='entity_id')
+       | map('config_entry_id')  # Core Jinja filter
+       | reject('none')
+       | unique
+       | list }}
+  attempts: "{{ this.attributes.get('attempts', 0) | int }}"
+```
+
+### Automation Flow Requirements
+1. **Trigger**: Numeric state above 0 with 5-minute stability
+2. **Variables**: Extract unique config entry IDs from failing entities  
+3. **Actions**: 
+   - Reload each integration via entry_id
+   - Send notification with summary
+   - Track retry attempts in automation attributes
+   - Escalate to full restart after max attempts
+
+### Error Handling Patterns
+- **Missing Services**: Blueprint should fail gracefully if Spook unavailable
+- **Invalid Entry IDs**: `reject('none')` filters out unmappable entities
+- **Retry Logic**: Use automation attributes for persistent state
+- **Mode**: `restart` to prevent overlapping executions
+
+### YAML Validation Requirements
+- Valid Home Assistant automation YAML syntax
+- Proper Jinja2 template syntax in all template fields  
+- Blueprint input references use `!input` syntax consistently
+- Service calls include proper `data:` blocks with required parameters

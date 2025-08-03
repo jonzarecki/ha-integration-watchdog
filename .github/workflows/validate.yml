@@ -1,0 +1,76 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 0 * * *"
+
+jobs:
+  validate-hacs:
+    runs-on: ubuntu-latest
+    name: HACS Validation
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: HACS validation
+        uses: hacs/action@main
+        with:
+          category: automation
+          
+  validate-hassfest:
+    runs-on: ubuntu-latest
+    name: Hassfest Validation  
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Hassfest validation
+        uses: home-assistant/actions/hassfest@master
+
+  validate-blueprint:
+    runs-on: ubuntu-latest
+    name: Blueprint Validation
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          
+      - name: Install Home Assistant
+        run: |
+          pip install homeassistant
+          
+      - name: Validate Blueprint YAML
+        run: |
+          python -c "
+          import yaml
+          import sys
+          
+          try:
+              with open('blueprints/automation/integration_watchdog_auto.yaml', 'r') as f:
+                  blueprint = yaml.safe_load(f)
+              
+              # Basic structure validation
+              assert 'blueprint' in blueprint, 'Missing blueprint key'
+              assert 'trigger' in blueprint, 'Missing trigger key'  
+              assert 'action' in blueprint, 'Missing action key'
+              
+              # Blueprint metadata validation
+              bp = blueprint['blueprint']
+              assert bp.get('domain') == 'automation', 'Blueprint domain must be automation'
+              assert 'name' in bp, 'Blueprint must have name'
+              assert 'input' in bp, 'Blueprint must have inputs'
+              
+              print('✅ Blueprint YAML validation passed')
+              
+          except Exception as e:
+              print(f'❌ Blueprint validation failed: {e}')
+              sys.exit(1)
+          "

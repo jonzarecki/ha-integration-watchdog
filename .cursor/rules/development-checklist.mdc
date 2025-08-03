@@ -1,0 +1,100 @@
+---
+description: Development checklist and quick commands for Integration Watchdog
+---
+
+# Integration Watchdog Development Checklist
+
+## Quick Development Commands
+
+### Setup & Activation
+```bash
+# Activate virtual environment
+source .venv/bin/activate
+
+# Install/update dependencies
+uv pip install homeassistant pyyaml jsonschema
+
+# Run full validation
+python scripts/validate.py
+```
+
+### Testing & Validation
+```bash
+# Test blueprint YAML syntax
+python -c "import yaml; print('✅ Valid' if yaml.safe_load(open('blueprints/automation/integration_watchdog_auto.yaml')) else '❌ Invalid')"
+
+# Validate HACS configuration
+python -c "import json; print('✅ Valid' if json.load(open('hacs.json')) else '❌ Invalid')"
+
+# Run GitHub Actions validation locally (requires Docker)
+# docker run --rm -v $(pwd):/workspace ghcr.io/hacs/action:main --category automation
+```
+
+## Pre-Commit Checklist
+
+Before making any commits, ensure:
+- [ ] `python scripts/validate.py` passes all checks
+- [ ] Blueprint YAML syntax is valid 
+- [ ] [README.md](mdc:README.md) is updated with any configuration changes
+- [ ] [CONTRIBUTING.md](mdc:CONTRIBUTING.md) reflects any new development requirements
+- [ ] Documentation includes examples for new features
+- [ ] Manual testing performed with test HA instance
+
+## Release Checklist
+
+Before tagging a release:
+- [ ] Version number updated in relevant documentation
+- [ ] All CI validation passes
+- [ ] Manual testing with Watchman + Spook completed
+- [ ] README import badge URL is correct
+- [ ] [hacs.json](mdc:hacs.json) homeassistant version requirement is accurate
+- [ ] CHANGELOG.md created/updated (if using)
+
+## File Reference Quick Links
+
+### Core Files
+- [Blueprint YAML](mdc:blueprints/automation/integration_watchdog_auto.yaml) - Main automation logic
+- [HACS Config](mdc:hacs.json) - Package metadata for HACS
+- [README](mdc:README.md) - User documentation and installation guide
+
+### Development Files  
+- [Validation Script](mdc:scripts/validate.py) - Project validation tool
+- [CI Workflow](mdc:.github/workflows/validate.yml) - GitHub Actions validation
+- [Contributing Guide](mdc:CONTRIBUTING.md) - Development setup and guidelines
+
+### Project Structure
+```
+integration-watchdog/
+├── .cursor/rules/          # Cursor IDE rules (this file)
+├── .github/workflows/      # CI/CD automation
+├── blueprints/automation/  # Main blueprint YAML
+├── docs/                   # Additional documentation
+├── scripts/               # Development and validation scripts
+├── hacs.json             # HACS package configuration
+├── README.md             # Primary documentation
+├── CONTRIBUTING.md       # Development guidelines
+├── LICENSE               # MIT license
+└── .gitignore           # Git exclusions
+```
+
+## Common Development Tasks
+
+### Adding New Blueprint Inputs
+1. Update [integration_watchdog_auto.yaml](mdc:blueprints/automation/integration_watchdog_auto.yaml) `blueprint.input` section
+2. Add selector configuration for UI presentation
+3. Reference input in automation logic with `!input input_name`
+4. Update [README.md](mdc:README.md) configuration section
+5. Test with manual blueprint import
+
+### Modifying Automation Logic
+1. Update `variables` section for data processing
+2. Modify `action` sequence for behavior changes
+3. Ensure proper error handling with fallbacks
+4. Test with synthetic entity failures
+5. Validate Jinja2 templates in HA Developer Tools
+
+### Documentation Updates
+1. Keep README installation flow accurate
+2. Update troubleshooting section with new common issues
+3. Verify import badge URL reflects actual repository
+4. Ensure prerequisite versions are current

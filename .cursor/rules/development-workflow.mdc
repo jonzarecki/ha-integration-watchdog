@@ -1,0 +1,49 @@
+---
+description: Effective agent development workflow patterns
+---
+
+# Development Workflow Best Practices
+
+## Agent Effectiveness Patterns
+Based on successful HACS integration development:
+
+### 1. Requirements Capture Strategy
+- **Comprehensive Specifications**: Follow detailed specs like [integration_watchdog_instructions_plus_instructions.md](mdc:integration_watchdog_instructions_plus_instructions.md)
+- **Clear Constraints**: Identify hard requirements (e.g., "no Python", "HACS-installable in <2 min")
+- **User-Focused Design**: Start with UX flow before technical implementation
+
+### 2. Systematic Change Management  
+- **Todo-Driven Development**: Use structured task lists for complex multi-step changes
+- **Parallel Tool Execution**: Gather all needed information simultaneously rather than sequentially
+- **Comprehensive Testing**: Always validate changes at multiple levels
+- **Documentation Synchronization**: Update all affected files atomically
+
+### 3. Information Gathering Best Practices
+- **Batch Information Collection**: Read multiple related files in parallel tool calls
+- **Comprehensive Searches**: Use both semantic search and grep for complete coverage  
+- **Proactive Exploration**: Anticipate what information will be needed upfront
+- **Trace Dependencies**: Follow symbols back to definitions and usages
+
+### 4. Change Implementation Strategy
+- **Constants-First Approach**: Centralize configuration values  
+- **Schema Evolution**: Update validation with parameter changes
+- **Cross-Component Updates**: Synchronize integration, frontend, docs, and tests
+- **Validation Pyramid**: Unit tests → integration tests → config validation → CI/CD
+
+### 5. Quality Assurance Process
+- **Multi-Layered Validation**: Syntax → logic → integration → CI/CD checks
+- **Immediate Testing**: Test changes comprehensively after implementation
+- **Professional Standards**: Follow Home Assistant Quality Scale progression
+- **Community Preparation**: Plan for contributions with proper templates
+
+## Development Environment Setup
+- **Virtual Environment**: Use `uv` for fast, reliable dependency management
+- **Code Quality**: Configure linting tools (pylint, black, isort, ruff)  
+- **CI/CD Integration**: GitHub Actions for automated validation
+- **Documentation Standards**: Clear README, CONTRIBUTING.md, security policy
+
+## Testing Strategy for Blueprints
+- **Manual Validation**: Test with synthetic entity failures
+- **Integration Testing**: Verify Watchman + Spook integration works
+- **Edge Case Testing**: Test missing services, invalid entities, retry limits
+- **User Experience Testing**: Verify notification flow and restart behavior

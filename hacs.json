@@ -1,0 +1,10 @@
+{
+  "name": "Integration Watchdog",
+  "description": "Reload flaky integrations or reboot Home Assistant using Watchman + Spook.",
+  "domains": ["automation"],
+  "content_in_root": false,
+  "homeassistant": "2024.6.0",
+  "render_readme": true,
+  "documentation": "https://github.com/jzarecki/ha-integration-watchdog/blob/main/README.md",
+  "issue_tracker": "https://github.com/jzarecki/ha-integration-watchdog/issues"
+}

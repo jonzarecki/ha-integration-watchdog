@@ -1,0 +1,37 @@
+---
+alwaysApply: true
+---
+
+# Integration Watchdog Project Structure
+
+This is a **HACS Blueprint-only package** for Home Assistant automation, not a custom component.
+
+## Core Architecture
+- **Purpose**: Auto-reload failing integrations detected by Watchman using Spook
+- **Type**: Blueprint automation (YAML-only, no Python)
+- **Dependencies**: Requires Watchman integration + Spook for reload_config_entry service
+- **Target**: One-click HACS installation with zero manual configuration
+
+## Required Repository Structure
+```
+integration-watchdog/
+├── blueprints/
+│   └── automation/
+│       └── integration_watchdog_auto.yaml    # Core blueprint YAML
+├── hacs.json                                # HACS package metadata  
+├── README.md                               # Installation & usage docs
+├── .github/workflows/                      # CI/CD validation
+└── docs/                                  # Additional documentation
+```
+
+## Key Files Reference
+- [integration_watchdog_auto.yaml](mdc:blueprints/automation/integration_watchdog_auto.yaml) - Main blueprint
+- [hacs.json](mdc:hacs.json) - HACS package configuration  
+- [README.md](mdc:README.md) - User documentation with import badge
+
+## Blueprint Behavior
+1. **Detection**: Monitors `sensor.watchman_issue_count` 
+2. **Extraction**: Uses Jinja `config_entry_id()` filter to get integration IDs
+3. **Remediation**: Calls `homeassistant.reload_config_entry` via Spook
+4. **Escalation**: Restarts HA after max retry limit (default: 3)
+5. **Notification**: Sends updates via configurable notify service
